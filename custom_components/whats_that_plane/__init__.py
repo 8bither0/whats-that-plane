@@ -98,6 +98,8 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
         return (math.degrees(initial_bearing) + 360) % 360
 
     def _is_within_fov(self, bearing, direction, fov):
+        if fov >= 360:
+            return True
         half_fov = fov / 2
         lower_bound = (direction - half_fov) % 360
         upper_bound = (direction + half_fov) % 360
@@ -112,7 +114,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
         radius_km = config["radius_km"]
         location_name = config.get("location_name", "default").strip()
         safe_filename = "".join(c for c in location_name if c.isalnum() or c in " _-").rstrip().lower().replace(" ", "_")
-        
+
         folium_map = folium.Map(location=(your_latitude, your_longitude), zoom_start=12)
         folium.Marker([your_latitude, your_longitude], tooltip="Your Location", icon=folium.Icon(color='blue')).add_to(folium_map)
 
@@ -124,16 +126,27 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
             longitude2 = longitude1 + math.atan2(math.sin(bearing_radian) * math.sin(distance / earth_radius) * math.cos(latitude1), math.cos(distance / earth_radius) - math.sin(latitude1) * math.sin(latitude2))
             return math.degrees(latitude2), math.degrees(longitude2)
 
-        left_bearing = (facing_direction - fov_cone / 2) % 360
-        right_bearing = (facing_direction + fov_cone / 2) % 360
-        left_point = _destination_point(your_latitude, your_longitude, left_bearing, radius_km)
-        right_point = _destination_point(your_latitude, your_longitude, right_bearing, radius_km)
+        if fov_cone >= 360:
+            folium.Circle(
+                location=(your_latitude, your_longitude),
+                radius=radius_km * 1000,
+                color='green',
+                fill=True,
+                fill_opacity=0.2,
+                tooltip='Field of View'
+            ).add_to(folium_map)
+        else:
+            arc_points = [(your_latitude, your_longitude)]
+            for angle in range(int(-fov_cone / 2), int(fov_cone / 2) + 1):
+                bearing = (facing_direction + angle) % 360
+                arc_points.append(_destination_point(your_latitude, your_longitude, bearing, radius_km))
+            arc_points.append((your_latitude, your_longitude))
 
-        folium.Polygon(
-            locations=[(your_latitude, your_longitude), left_point, right_point],
-            color='green', fill=True, fill_opacity=0.2, tooltip='Field of View'
-        ).add_to(folium_map)
-        
+            folium.Polygon(
+                locations=arc_points,
+                color='green', fill=True, fill_opacity=0.2, tooltip='Field of View'
+            ).add_to(folium_map)
+
 
         directory_path = self.hass.config.path(f"www/community/{DOMAIN}")
         os.makedirs(directory_path, exist_ok=True)
