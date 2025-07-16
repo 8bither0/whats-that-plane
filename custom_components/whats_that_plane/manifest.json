@@ -1,0 +1,16 @@
+{
+    "domain": "whats_that_plane",
+    "name": "What's that plane?!",
+    "config_flow": true,
+    "documentation": "https://github.com/8bither0/whats-that-plane",
+    "issue_tracker": "https://github.com/8bither0/whats-that-plane/issues",
+    "codeowners": ["@8bither0"],
+    "requirements": [
+      "FlightRadarAPI==1.4.0",
+      "dpath==2.2.0",
+      "geopy==2.4.1",
+      "folium==0.20.0"
+    ],
+    "version": "1.0.0",
+    "iot_class": "cloud_polling"
+  }
