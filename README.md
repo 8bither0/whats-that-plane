@@ -16,7 +16,7 @@ See [Adding visible flight information card to your dashboard](#Adding-visible-f
 ## Installation
 ### HACS via link (Recommended)
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=8bither0&repository=whats-that-plane&category=integration)
-1. Click the button above to open the integration in Home Aassistant Community Store in Home Assistant.
+1. Click the button above to open the integration in Home Assistant Community Store in Home Assistant.
 2. Click `Add`.
 3. Click the `Download` button in the bottom right corner.
 4. Restart Home Assistant.
@@ -73,7 +73,15 @@ To initially configure the integration, define the information below. This can b
 After configuring the integration, a new sensor named `sensor.visible_flights` will be created. This will update at the frequency defined by the option `update_interval` and list flights visible within the defined field of view. The exposed sensor information can be used to create a variety of interesting dashboard cards. See [Adding visible flight information card to your dashboard](#Adding-visible-flight-information-card-to-your-dashboard) for more information.
 
 ## Adding visible flight information card to your dashboard
-The template code required to achieve the card shown in the screenshot above can be found below. If you haven't changed the default name of the sensor, you should simply be able to copy and paste this and it should work with no changes required. Otherwise, please ensure that the sensor name on line 4 is correct (Default: `sensor.visible_flights`):
+The template code required to achieve the card shown in the screenshot above can be found below. To create the card in dashboards that you have control over and are able to add cards to:
+1. Click the pencil icon in the top right corner to `Edit dashboard`.
+2. Click the `Add card` button in the bottom right corner.
+3. Search for and click on the `Manual` card type.
+4. Copy and paste the code below into the code text field.
+5. Click `Save`.
+6. Click `Done` in the top right corner.
+
+> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please ensure that the sensor name on line 4 is correct (Default: `sensor.visible_flights`):
 
 ```
 type: markdown
