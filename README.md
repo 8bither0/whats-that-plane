@@ -47,16 +47,18 @@ See [Adding visible flight information card to your dashboard](#Adding-visible-f
 ## Configuration
 To initially configure the integration, define the information below. This can be reconfigured via configuration entry options after initial setup:
 
-| Option               | Required | Example value | Description |
-| :------------------- | :------: | :-----------: | :---------- |
-| `location_name`      | ❌       | `Home`        | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries. |
-| `latitude`           | ✅       | `51.5285262`  | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `longitude`          | ✅       | `-0.2663999`  | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `radius_km`          | ✅       | `5`           | The radius distance boundary from your current location. e.g. `5` = 5km |
-| `facing_direction`   | ✅       | `0`           | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
-| `fov_cone`           | ✅       | `90`          | The number of degrees the field of view cone should be. |
-| `update_interval`    | ✅       | `10`          | The number of seconds between each poll for flight information. |
-| `visualise_fov_cone` | ❌       | ✅            | If checked, a HTML map which visualises your defined location and relative FOV cone will be generated. This is useful when first configuring an entry to ensure it matches your desired real life FOV. The HTML file is saved in the following location / format on your Home Assistant file system `config/www/community/whats_that_plane/visualise_fov_{location_name}.html`. If `location_name` is empty, the file is named `visualise_fov_default.html`. |
+| Option                              | Required | Example value | Description |
+| :-------------------                | :------: | :-----------: | :---------- |
+| `location_name`                     | ❌       | `Home`        | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries. |
+| `latitude`                          | ✅       | `51.5285262`  | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
+| `longitude`                         | ✅       | `-0.2663999`  | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
+| `radius_km`                         | ✅       | `5`           | The radius distance boundary from your current location. e.g. `5` = 5km |
+| `facing_direction`                  | ✅       | `0`           | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
+| `fov_cone`                          | ✅       | `90`          | The number of degrees the field of view cone should be. |
+| `update_interval`                   | ✅       | `10`          | The number of seconds between each poll for flight information. |
+| `filter_flight_altitude_ft_minimum` | ❌       | `0`           | The minimum flight altitude in feet for flights to be shown. |
+| `filter_flight_altitude_ft_maximum` | ❌       | `60000`       | The maximum flight altitude in feet for flights to be shown. |
+| `visualise_fov_cone`                | ❌       | ✅            | If checked, a HTML map which visualises your defined location and relative FOV cone will be generated. This is useful when first configuring an entry to ensure it matches your desired real life FOV. The HTML file is saved in the following location / format on your Home Assistant file system `config/www/community/whats_that_plane/visualise_fov_{location_name}.html`. If `location_name` is empty, the file is named `visualise_fov_default.html`. |
 
 > **TIP**: To make the initial configuration process easier, you can use `visualise_fov_cone` and create a dashboard card to easily visualise your FOV cone settings.
 >

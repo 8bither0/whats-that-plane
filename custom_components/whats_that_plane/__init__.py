@@ -115,7 +115,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
         location_name = config.get("location_name", "default").strip()
         safe_filename = "".join(c for c in location_name if c.isalnum() or c in " _-").rstrip().lower().replace(" ", "_")
 
-        folium_map = folium.Map(location=(your_latitude, your_longitude), zoom_start=12)
+        folium_map = folium.Map(location=(your_latitude, your_longitude), zoom_start=10)
         folium.Marker([your_latitude, your_longitude], tooltip="Your Location", icon=folium.Icon(color='blue')).add_to(folium_map)
 
         def _destination_point(latitude, longitude, bearing, distance):
@@ -147,7 +147,6 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
                 color='green', fill=True, fill_opacity=0.2, tooltip='Field of View'
             ).add_to(folium_map)
 
-
         directory_path = self.hass.config.path(f"www/community/{DOMAIN}")
         os.makedirs(directory_path, exist_ok=True)
         file_path = os.path.join(directory_path, f"visualise_fov_{safe_filename}.html")
@@ -160,6 +159,8 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
             your_latitude = config["latitude"]
             your_longitude = config["longitude"]
             radius_km = config["radius_km"] * 1000
+            minimum_altitude = config.get("filter_flight_altitude_ft_minimum", 0)
+            maximum_altitude = config.get("filter_flight_altitude_ft_maximum", 60000)
 
             bounds = await self.hass.async_add_executor_job(
                 self.fr_api.get_bounds_by_point, your_latitude, your_longitude, radius_km
@@ -170,14 +171,22 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
 
             visible_flights = []
             for flight in all_flights:
-                if flight.latitude is None or flight.longitude is None:
+                if flight.latitude is None or flight.longitude is None or flight.altitude is None:
+                    continue
+
+                if not (minimum_altitude <= flight.altitude <= maximum_altitude):
                     continue
 
                 flight_bearing = self._calculate_bearing(your_latitude, your_longitude, flight.latitude, flight.longitude)
 
                 if self._is_within_fov(flight_bearing, config["facing_direction"], config["fov_cone"]):
-                    flight_details = await self.hass.async_add_executor_job(self.fr_api.get_flight_details, flight)
-                    
+                    flight_details = {}
+                    try:
+                        flight_details = await self.hass.async_add_executor_job(self.fr_api.get_flight_details, flight)
+                    except Exception as e:
+                        _LOGGER.warning("Could not fetch details for flight %s: %s", flight.callsign or flight.id, e)
+                        flight_details = flight.__dict__
+
                     origin_position = (dpath.util.get(flight_details, ORIGIN_LATITUDE, default=None), dpath.util.get(flight_details, ORIGIN_LONGITUDE, default=None))
                     destination_position = (dpath.util.get(flight_details, DESTINATION_LATITUDE, default=None), dpath.util.get(flight_details, DESTINATION_LONGITUDE, default=None))
                     current_position = (flight.latitude, flight.longitude)
