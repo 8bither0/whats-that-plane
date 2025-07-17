@@ -115,7 +115,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
         location_name = config.get("location_name", "default").strip()
         safe_filename = "".join(c for c in location_name if c.isalnum() or c in " _-").rstrip().lower().replace(" ", "_")
 
-        folium_map = folium.Map(location=(your_latitude, your_longitude), zoom_start=10)
+        folium_map = folium.Map(location=(your_latitude, your_longitude), zoom_start=11)
         folium.Marker([your_latitude, your_longitude], tooltip="Your Location", icon=folium.Icon(color='blue')).add_to(folium_map)
 
         def _destination_point(latitude, longitude, bearing, distance):
