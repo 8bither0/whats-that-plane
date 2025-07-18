@@ -1,5 +1,5 @@
 import dpath.util
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -103,6 +103,131 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         else:
             return f"{int(hours)} hours {int(minutes)} minutes"
 
+    def _format_flight_data(self, flight_info):
+        flight = flight_info.get("data", {})
+        if not flight:
+            return None
+
+        # Flight information
+        callsign = dpath.util.get(flight, CALLSIGN, default=None)
+        flight_id = dpath.util.get(flight, FLIGHT_ID, default=None)
+        origin_country_code = dpath.util.get(flight, ORIGIN_COUNTRY_CODE, default=None)
+        destination_country_code = dpath.util.get(flight, DESTINATION_COUNTRY_CODE, default=None)
+        origin_2_letter_code = COUNTRY_CODE_MAP.get(origin_country_code, origin_country_code)
+        destination_2_letter_code = COUNTRY_CODE_MAP.get(destination_country_code, destination_country_code)
+        flightradar_link = None
+        if flight_id:
+            if callsign == "Blocked":
+                flightradar_link = f"https://www.flightradar24.com/{flight_id}"
+            elif callsign:
+                flightradar_link = f"https://www.flightradar24.com/{callsign}/{flight_id}"
+
+        # Flight time data
+        scheduled_departure = dpath.util.get(flight, TIME_SCHEDULED_DEPARTURE, default=None)
+        scheduled_arrival = dpath.util.get(flight, TIME_SCHEDULED_ARRIVAL, default=None)
+        real_departure = dpath.util.get(flight, TIME_REAL_DEPARTURE, default=None)
+        real_arrival = dpath.util.get(flight, TIME_REAL_ARRIVAL, default=None)
+        estimated_departure = dpath.util.get(flight, TIME_ESTIMATED_DEPARTURE, default=None)
+        estimated_arrival = dpath.util.get(flight, TIME_ESTIMATED_ARRIVAL, default=None)
+        origin_timezone_name = dpath.util.get(flight, ORIGIN_TIMEZONE_NAME, default=None)
+        destination_timezone_name = dpath.util.get(flight, DESTINATION_TIMEZONE_NAME, default=None)
+
+        # Calculate delays
+        departure_delay_mins = None
+        if scheduled_departure and real_departure:
+            departure_delay_mins = round((real_departure - scheduled_departure) / 60)
+        
+        estimated_departure_delay_mins = None
+        if scheduled_departure and estimated_departure:
+            estimated_departure_delay_mins = round((estimated_departure - scheduled_departure) / 60)
+
+        arrival_delay_mins = None
+        if scheduled_arrival and real_arrival:
+            arrival_delay_mins = round((real_arrival - scheduled_arrival) / 60)
+
+        estimated_arrival_delay_mins = None
+        if scheduled_arrival and estimated_arrival:
+            estimated_arrival_delay_mins = round((estimated_arrival - scheduled_arrival) / 60)
+
+        # Calculate total flight time
+        effective_departure = real_departure or estimated_departure or scheduled_departure
+        effective_arrival = real_arrival or estimated_arrival or scheduled_arrival
+        
+        total_flight_time_formatted = None
+        if effective_departure and effective_arrival:
+            duration_seconds = effective_arrival - effective_departure
+            total_flight_time_formatted = self._format_duration(duration_seconds)
+
+        # Last seen time for historic flights
+        last_seen_time_formatted = None
+        last_seen_timestamp = flight_info.get("last_seen")
+        if last_seen_timestamp:
+            time_diff = datetime.now(timezone.utc) - datetime.fromtimestamp(last_seen_timestamp, tz=timezone.utc)
+            
+            days = time_diff.days
+            hours, remainder = divmod(time_diff.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+
+            if days > 0:
+                last_seen_time_formatted = f"{days}d ago"
+            elif hours > 0:
+                last_seen_time_formatted = f"{hours}h ago"
+            elif minutes > 0:
+                last_seen_time_formatted = f"{minutes}m ago"
+            else:
+                last_seen_time_formatted = "Just now"
+        
+        return {
+            "callsign": callsign,
+            "flightradar_link": flightradar_link,
+            "airline_name": dpath.util.get(flight, AIRLINE_NAME, default=None),
+            "aircraft_model": dpath.util.get(flight, AIRCRAFT_MODEL, default=None),
+            "aircraft_type": dpath.util.get(flight, AIRCRAFT_TYPE, default=None),
+            "aircraft_registration": dpath.util.get(flight, AIRCRAFT_REGISTRATION, default=None),
+            "large_aircraft_image_link": dpath.util.get(flight, LARGE_AIRCRAFT_IMAGE, default=None),
+            "medium_aircraft_image_link": dpath.util.get(flight, MEDIUM_AIRCRAFT_IMAGE, default=None),
+            "small_aircraft_image_link": dpath.util.get(flight, SMALL_AIRCRAFT_IMAGE, default=None),
+            "thumbnail_aircraft_image_link": dpath.util.get(flight, THUMBNAIL_AIRCRAFT_IMAGE, default=None),
+
+            "altitude_ft": dpath.util.get(flight, ALTITUDE, default=None),
+            "ground_speed_kts": dpath.util.get(flight, GROUND_SPEED, default=None),
+            "heading": dpath.util.get(flight, HEADING, default=None),
+            "total_distance_km": flight.get("total_distance_km"),
+            "distance_traveled_km": flight.get("distance_traveled_km"),
+            "progress_percent": flight.get("progress_percent"),
+            "total_flight_time_formatted": total_flight_time_formatted,
+
+            "origin_city": dpath.util.get(flight, ORIGIN_CITY, default=None),
+            "origin_country": dpath.util.get(flight, ORIGIN_COUNTRY, default=None),
+            "origin_country_code": origin_country_code,
+            "origin_country_code_long": dpath.util.get(flight, ORIGIN_COUNTRY_CODELONG, default=None),
+            "origin_flag_emoji": self._code_to_flag_emoji(origin_2_letter_code),
+            "origin_airport_name": dpath.util.get(flight, ORIGIN_AIRPORT_NAME, default=None),
+            "origin_airport_code": dpath.util.get(flight, ORIGIN_AIRPORT_CODE, default=None),
+
+            "destination_city": dpath.util.get(flight, DESTINATION_CITY, default=None),
+            "destination_country": dpath.util.get(flight, DESTINATION_COUNTRY, default=None),
+            "destination_country_code": destination_country_code,
+            "destination_country_code_long": dpath.util.get(flight, DESTINATION_COUNTRY_CODELONG, default=None),
+            "destination_flag_emoji": self._code_to_flag_emoji(destination_2_letter_code),
+            "destination_airport_name": dpath.util.get(flight, DESTINATION_AIRPORT_NAME, default=None),
+            "destination_airport_code": dpath.util.get(flight, DESTINATION_AIRPORT_CODE, default=None),
+            
+            "scheduled_departure_time_local": self._format_time_local(scheduled_departure, origin_timezone_name),
+            "estimated_departure_time_local": self._format_time_local(estimated_departure, origin_timezone_name),
+            "real_departure_time_local": self._format_time_local(real_departure, origin_timezone_name),
+            "estimated_departure_delay_mins": estimated_departure_delay_mins,
+            "departure_delay_mins": departure_delay_mins,
+
+            "scheduled_arrival_time_local": self._format_time_local(scheduled_arrival, destination_timezone_name),
+            "estimated_arrival_time_local": self._format_time_local(estimated_arrival, destination_timezone_name),
+            "real_arrival_time_local": self._format_time_local(real_arrival, destination_timezone_name),
+            "estimated_arrival_delay_mins": estimated_arrival_delay_mins,
+            "arrival_delay_mins": arrival_delay_mins,
+
+            "last_seen_time_formatted": last_seen_time_formatted,
+        }
+
     @property
     def native_value(self):
         return self._attr_native_value
@@ -119,102 +244,12 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         visible_flights = self.coordinator.data or []
         self._attr_native_value = len(visible_flights)
 
-        flights_data = []
-        for flight in visible_flights:
-            if not flight:
-                continue
+        flights_data = [self._format_flight_data(flight) for flight in visible_flights if flight]
+        
+        historic_flights = self.coordinator.historic_flights or []
+        historic_flights_data = [self._format_flight_data(flight) for flight in historic_flights if flight]
 
-            # Flight information
-            callsign = dpath.util.get(flight, CALLSIGN, default=None)
-            flight_id = dpath.util.get(flight, FLIGHT_ID, default=None)
-            origin_country_code = dpath.util.get(flight, ORIGIN_COUNTRY_CODE, default=None)
-            destination_country_code = dpath.util.get(flight, DESTINATION_COUNTRY_CODE, default=None)
-            origin_2_letter_code = COUNTRY_CODE_MAP.get(origin_country_code, origin_country_code)
-            destination_2_letter_code = COUNTRY_CODE_MAP.get(destination_country_code, destination_country_code)
-
-            # Flight time data
-            scheduled_departure = dpath.util.get(flight, TIME_SCHEDULED_DEPARTURE, default=None)
-            scheduled_arrival = dpath.util.get(flight, TIME_SCHEDULED_ARRIVAL, default=None)
-            real_departure = dpath.util.get(flight, TIME_REAL_DEPARTURE, default=None)
-            real_arrival = dpath.util.get(flight, TIME_REAL_ARRIVAL, default=None)
-            estimated_departure = dpath.util.get(flight, TIME_ESTIMATED_DEPARTURE, default=None)
-            estimated_arrival = dpath.util.get(flight, TIME_ESTIMATED_ARRIVAL, default=None)
-            origin_timezone_name = dpath.util.get(flight, ORIGIN_TIMEZONE_NAME, default=None)
-            destination_timezone_name = dpath.util.get(flight, DESTINATION_TIMEZONE_NAME, default=None)
-
-            # Calculate delays
-            departure_delay_mins = None
-            if scheduled_departure and real_departure:
-                departure_delay_mins = round((real_departure - scheduled_departure) / 60)
-            
-            estimated_departure_delay_mins = None
-            if scheduled_departure and estimated_departure:
-                estimated_departure_delay_mins = round((estimated_departure - scheduled_departure) / 60)
-
-            arrival_delay_mins = None
-            if scheduled_arrival and real_arrival:
-                arrival_delay_mins = round((real_arrival - scheduled_arrival) / 60)
-
-            estimated_arrival_delay_mins = None
-            if scheduled_arrival and estimated_arrival:
-                estimated_arrival_delay_mins = round((estimated_arrival - scheduled_arrival) / 60)
-
-            # Calculate total flight time
-            effective_departure = real_departure or estimated_departure or scheduled_departure
-            effective_arrival = real_arrival or estimated_arrival or scheduled_arrival
-            
-            total_flight_time_formatted = None
-            if effective_departure and effective_arrival:
-                duration_seconds = effective_arrival - effective_departure
-                total_flight_time_formatted = self._format_duration(duration_seconds)
-            
-            flights_data.append({
-                "callsign": callsign,
-                "flightradar_link": f"https://www.flightradar24.com/{callsign}/{flight_id}" if callsign and flight_id else None,
-                "airline_name": dpath.util.get(flight, AIRLINE_NAME, default=None),
-                "aircraft_model": dpath.util.get(flight, AIRCRAFT_MODEL, default=None),
-                "aircraft_type": dpath.util.get(flight, AIRCRAFT_TYPE, default=None),
-                "aircraft_registration": dpath.util.get(flight, AIRCRAFT_REGISTRATION, default=None),
-                "large_aircraft_image_link": dpath.util.get(flight, LARGE_AIRCRAFT_IMAGE, default=None),
-                "medium_aircraft_image_link": dpath.util.get(flight, MEDIUM_AIRCRAFT_IMAGE, default=None),
-                "small_aircraft_image_link": dpath.util.get(flight, SMALL_AIRCRAFT_IMAGE, default=None),
-                "thumbnail_aircraft_image_link": dpath.util.get(flight, THUMBNAIL_AIRCRAFT_IMAGE, default=None),
-
-                "altitude_ft": dpath.util.get(flight, ALTITUDE, default=None),
-                "ground_speed_kts": dpath.util.get(flight, GROUND_SPEED, default=None),
-                "heading": dpath.util.get(flight, HEADING, default=None),
-                "total_distance_km": flight.get("total_distance_km"),
-                "distance_traveled_km": flight.get("distance_traveled_km"),
-                "progress_percent": flight.get("progress_percent"),
-                "total_flight_time_formatted": total_flight_time_formatted,
-
-                "origin_city": dpath.util.get(flight, ORIGIN_CITY, default=None),
-                "origin_country": dpath.util.get(flight, ORIGIN_COUNTRY, default=None),
-                "origin_country_code": origin_country_code,
-                "origin_country_code_long": dpath.util.get(flight, ORIGIN_COUNTRY_CODELONG, default=None),
-                "origin_flag_emoji": self._code_to_flag_emoji(origin_2_letter_code),
-                "origin_airport_name": dpath.util.get(flight, ORIGIN_AIRPORT_NAME, default=None),
-                "origin_airport_code": dpath.util.get(flight, ORIGIN_AIRPORT_CODE, default=None),
-
-                "destination_city": dpath.util.get(flight, DESTINATION_CITY, default=None),
-                "destination_country": dpath.util.get(flight, DESTINATION_COUNTRY, default=None),
-                "destination_country_code": destination_country_code,
-                "destination_country_code_long": dpath.util.get(flight, DESTINATION_COUNTRY_CODELONG, default=None),
-                "destination_flag_emoji": self._code_to_flag_emoji(destination_2_letter_code),
-                "destination_airport_name": dpath.util.get(flight, DESTINATION_AIRPORT_NAME, default=None),
-                "destination_airport_code": dpath.util.get(flight, DESTINATION_AIRPORT_CODE, default=None),
-                
-                "scheduled_departure_time_local": self._format_time_local(scheduled_departure, origin_timezone_name),
-                "estimated_departure_time_local": self._format_time_local(estimated_departure, origin_timezone_name),
-                "real_departure_time_local": self._format_time_local(real_departure, origin_timezone_name),
-                "estimated_departure_delay_mins": estimated_departure_delay_mins,
-                "departure_delay_mins": departure_delay_mins,
-
-                "scheduled_arrival_time_local": self._format_time_local(scheduled_arrival, destination_timezone_name),
-                "estimated_arrival_time_local": self._format_time_local(estimated_arrival, destination_timezone_name),
-                "real_arrival_time_local": self._format_time_local(real_arrival, destination_timezone_name),
-                "estimated_arrival_delay_mins": estimated_arrival_delay_mins,
-                "arrival_delay_mins": arrival_delay_mins,
-            })
-
-        self._attr_extra_state_attributes = {"flights": flights_data}
+        self._attr_extra_state_attributes = {
+            "flights": flights_data,
+            "historic_flights": historic_flights_data,
+        }

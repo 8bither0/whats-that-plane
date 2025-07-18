@@ -58,6 +58,8 @@ To initially configure the integration, define the information below. This can b
 | `update_interval`                   | ✅       | `10`          | The number of seconds between each poll for flight information. |
 | `filter_flight_altitude_ft_minimum` | ❌       | `0`           | The minimum flight altitude in feet for flights to be shown. |
 | `filter_flight_altitude_ft_maximum` | ❌       | `60000`       | The maximum flight altitude in feet for flights to be shown. |
+| `hold_flight_data_seconds`          | ❌       | `0`           | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone. |
+| `historic_flights_max_count`        | ❌       | `0`           | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised. |
 | `visualise_fov_cone`                | ❌       | ✅            | If checked, a HTML map which visualises your defined location and relative FOV cone will be generated. This is useful when first configuring an entry to ensure it matches your desired real life FOV. The HTML file is saved in the following location / format on your Home Assistant file system `config/www/community/whats_that_plane/visualise_fov_{location_name}.html`. If `location_name` is empty, the file is named `visualise_fov_default.html`. |
 
 > **TIP**: To make the initial configuration process easier, you can use `visualise_fov_cone` and create a dashboard card to easily visualise your FOV cone settings.
@@ -83,12 +85,16 @@ The template code required to achieve the card shown in the screenshot above can
 5. Click `Save`.
 6. Click `Done` in the top right corner.
 
-> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please ensure that the sensor name on line 4 is correct (Default: `sensor.visible_flights`):
+> If you'd like to extend this card to show historic flight data of flights that have recently left your FOV cone, complete this section first then ensure that your configuration setting `historic_flights_max_count` is 1 or more and move onto [Viewing historic flight information](#Viewing-historic-flight-information).
+
+> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please ensure that the sensor name on line 6 is correct (Default: `sensor.visible_flights`):
 
 ```
 type: markdown
-title: What's that plane?!
 content: >-
+
+  # What's that plane?!
+
   {% set flights = state_attr('sensor.visible_flights', 'flights') %}
   {% if flights and flights | count > 0 %}
   {% for flight in flights %}
@@ -163,6 +169,101 @@ content: >-
   {% endfor %}
   {% else %}
     No visible flights at the moment.
+  {% endif %}
+```
+
+## Viewing historic flight information
+If your configuration setting for `historic_flights_max_count` is set to 1 or more, you can utilise the `historic_flights` attribute to view a log of flights that have left your defined FOV cone. This can be especially useful in situations where you just miss a plane but are still curious about what it was so instead of asking "What's that plane?!" you're left asking "What **was** that plane?!".
+
+After you've already configured your main dashboard card (see [Adding visible flight information card to your dashboard](#Adding-visible-flight-information-card-to-your-dashboard)), you can extend this to show historic flights using the code below. Simply copy and paste it after the code for the existing card.
+
+This section basically clones the existing card but only shows it for historic flights. The only real change is the addition of a last seen time on the title line for each flight.
+
+![Example history](https://raw.githubusercontent.com/8bither0/whats-that-plane/main/example_history.jpg)
+
+> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please ensure that the sensor name on line 7 is correct (Default: `sensor.visible_flights`):
+
+```
+
+
+  ***
+  
+  # What was that plane?!
+
+  {% set historic_flights = state_attr('sensor.visible_flights', 'historic_flights') %}
+  {% if historic_flights and historic_flights | count > 0 %}
+  {% for flight in historic_flights %}
+
+  {% if flight.callsign == "Blocked" %} 🚫 [**{{ flight.callsign }}**]({{ flight.flightradar_link }})
+  {% if flight.aircraft_model %}
+  **{{ flight.aircraft_model }}** *({{ flight.aircraft_type }})* | **Registration:** {{ flight.aircraft_registration }}
+  {% endif %}
+  {%- set image = flight.large_aircraft_image_link or flight.medium_aircraft_image_link or flight.small_aircraft_image_link or flight.thumbnail_aircraft_image_link %}
+  {% if image %}
+    ![]({{ image }})
+  {% endif %}
+
+  {% elif flight.callsign %}
+  ✈️ **{{ flight.airline_name }} [**{{ flight.callsign }}**]({{ flight.flightradar_link }}) (**{{ flight.origin_airport_code }} → {{ flight.destination_airport_code }}**)** {% if flight.last_seen_time_formatted %} | *{{ flight.last_seen_time_formatted }}* {% endif %}
+
+
+  {% if flight.total_distance_km and flight.total_distance_km > 0 %}
+    {%- set bar_width = 20 -%}
+    {%- set plane_pos = max(1, (bar_width * flight.progress_percent / 100) | round | int) -%}
+    **{{ flight.origin_country_code_long or flight.origin_country_code }} {{ flight.origin_flag_emoji or flight.origin_airport_code }}** `{{ '─' * (plane_pos - 1) }}✈️{{ '─' * (bar_width - plane_pos) }}` **{{ flight.destination_flag_emoji or flight.destination_airport_code }} {{ flight.destination_country_code_long or flight.destination_country_code }}**
+    📏 **Distance:** *{{ flight.distance_traveled_km }} of {{ flight.total_distance_km }} km ({{ flight.progress_percent }}%)*
+    📈 **Altitude:** {{ flight.altitude_ft | default(0, true) | round(0) }} ft | **Speed:** {{ flight.ground_speed_kts | default(0, true) }} kts ({{ ((flight.ground_speed_kts | default(0, true)) * 1.15078) | round(0) }} mph)
+    {% if flight.total_flight_time_formatted %} 🕑 **Total Flight Time:** {{ flight.total_flight_time_formatted }}
+    {% endif %}
+  {% endif %}
+
+  {% if flight.origin_city or flight.origin_country or flight.destination_city or flight.destination_country or flight.origin_airport_name or flight.destination_airport_name %}
+    🌍 {{ flight.origin_city }}, _**{{ flight.origin_country }}**_ → {{ flight.destination_city }}, _**{{ flight.destination_country }}**_
+    🛂 {{ flight.origin_airport_name | replace('Airport', '') | trim }} → {{ flight.destination_airport_name | replace('Airport', '') | trim }}
+  {% endif %}
+
+  {% if flight.scheduled_departure_time_local %} {% set departure_delay = flight.departure_delay_mins if flight.departure_delay_mins is not none else flight.estimated_departure_delay_mins %}
+  🛫 **Scheduled Departure:** {{ flight.scheduled_departure_time_local }}
+  {% if departure_delay is not none %}
+  {% if departure_delay > 0 %}
+    - ⚠️ **Delayed: {{ departure_delay }} minutes**
+  {% elif departure_delay < 0 %}
+    - ✅ **Early: {{ departure_delay | abs }} minutes**
+  {% endif %}
+  {% endif %}
+  {% if flight.real_departure_time_local %}
+    - **Actual Departure:** {{ flight.real_departure_time_local }}
+  {% elif flight.estimated_departure_time_local %}
+    - **Estimated Departure:** {{ flight.estimated_departure_time_local }}
+  {% endif %}
+  {% endif %}
+
+  {% if flight.scheduled_arrival_time_local %} {% set arrival_delay = flight.arrival_delay_mins if flight.arrival_delay_mins is not none else flight.estimated_arrival_delay_mins %}
+  🛬 **Scheduled Arrival:** {{ flight.scheduled_arrival_time_local }}
+  {% if arrival_delay is not none %}
+  {% if arrival_delay > 0 %}
+    - ⚠️ **Delayed: {{ arrival_delay }} minutes**
+  {% elif arrival_delay < 0 %}
+    - ✅ **Early: {{ arrival_delay | abs }} minutes**
+  {% endif %} {% endif %} {% if flight.real_arrival_time_local %}
+    - **Actual Arrival:** {{ flight.real_arrival_time_local }}
+  {% elif flight.estimated_arrival_time_local %}
+    - **Estimated Arrival:** {{ flight.estimated_arrival_time_local }}
+  {% endif %} {% endif %}
+
+  {% if flight.aircraft_model %}
+    **{{ flight.aircraft_model }}** *({{ flight.aircraft_type }})* | **Registration:** {{ flight.aircraft_registration }} {% endif %}
+  {%- set image = flight.large_aircraft_image_link or flight.medium_aircraft_image_link or flight.small_aircraft_image_link or flight.thumbnail_aircraft_image_link %}
+  {% if image %}
+    ![]({{ image }})
+  {% endif %}
+
+  ***
+  
+  {% endif %}
+  {% endfor %}
+  {% else %}
+    No recent flight history.
   {% endif %}
 ```
 

@@ -27,6 +27,8 @@ class WhatsThatPlaneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("update_interval", default=10): vol.All(vol.Coerce(int), vol.Range(min=1)),
             vol.Optional("filter_flight_altitude_ft_minimum", default=0): vol.Coerce(int),
             vol.Optional("filter_flight_altitude_ft_maximum", default=60000): vol.Coerce(int),
+            vol.Optional("hold_flight_data_seconds", default=0): vol.Coerce(int),
+            vol.Optional("historic_flights_max_count", default=0): vol.Coerce(int),
             vol.Optional("visualise_fov_cone", default=False): bool,
         })
         return self.async_show_form(step_id="user", data_schema=data_schema)
@@ -73,6 +75,8 @@ class WhatsThatPlaneOptionsFlow(config_entries.OptionsFlow):
             vol.Required("update_interval", default=current_config.get("update_interval")): vol.All(vol.Coerce(int), vol.Range(min=1)),
             vol.Optional("filter_flight_altitude_ft_minimum", default=current_config.get("filter_flight_altitude_ft_minimum", 0)): vol.Coerce(int),
             vol.Optional("filter_flight_altitude_ft_maximum", default=current_config.get("filter_flight_altitude_ft_maximum", 60000)): vol.Coerce(int),
+            vol.Optional("hold_flight_data_seconds", default=current_config.get("hold_flight_data_seconds", 0)): vol.Coerce(int),
+            vol.Optional("historic_flights_max_count", default=current_config.get("historic_flights_max_count", 0)): vol.Coerce(int),
             vol.Optional("visualise_fov_cone", default=False): bool,
         })
         return self.async_show_form(step_id="init", data_schema=options_schema)

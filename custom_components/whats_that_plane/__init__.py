@@ -2,6 +2,7 @@ import os
 import asyncio
 import logging
 import math
+import time
 import dpath.util
 import folium
 from datetime import timedelta
@@ -76,6 +77,8 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
 
         update_seconds = self._config.get("update_interval", 60)
         self.fr_api = FlightRadar24API()
+        self.tracked_flights = {}
+        self.historic_flights = []
 
         super().__init__(
             hass,
@@ -161,6 +164,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
             radius_km = config["radius_km"] * 1000
             minimum_altitude = config.get("filter_flight_altitude_ft_minimum", 0)
             maximum_altitude = config.get("filter_flight_altitude_ft_maximum", 60000)
+            hold_seconds = config.get("hold_flight_data_seconds", 0)
 
             bounds = await self.hass.async_add_executor_job(
                 self.fr_api.get_bounds_by_point, your_latitude, your_longitude, radius_km
@@ -169,8 +173,10 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
                 self.fr_api.get_flights, None, bounds
             )
 
-            visible_flights = []
-            for flight in all_flights:
+            all_flights_map = {flight.id: flight for flight in all_flights if flight.id}
+            currently_visible_ids = set()
+
+            for flight_id, flight in all_flights_map.items():
                 if flight.latitude is None or flight.longitude is None or flight.altitude is None:
                     continue
 
@@ -180,32 +186,60 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
                 flight_bearing = self._calculate_bearing(your_latitude, your_longitude, flight.latitude, flight.longitude)
 
                 if self._is_within_fov(flight_bearing, config["facing_direction"], config["fov_cone"]):
-                    flight_details = {}
-                    try:
-                        flight_details = await self.hass.async_add_executor_job(self.fr_api.get_flight_details, flight)
-                    except Exception as e:
-                        _LOGGER.warning("Could not fetch details for flight %s: %s", flight.callsign or flight.id, e)
-                        flight_details = flight.__dict__
+                    currently_visible_ids.add(flight_id)
 
+                    if flight_id not in self.tracked_flights:
+                        _LOGGER.debug(f"New flight in FOV: {flight_id}")
+                        try:
+                            flight_details = await self.hass.async_add_executor_job(self.fr_api.get_flight_details, flight)
+                        except Exception as e:
+                            _LOGGER.warning(f"Could not fetch details for {flight_id}: {e}")
+                            flight_details = {}
+                        self.tracked_flights[flight_id] = {"data": flight_details}
+                    else:
+                        flight_details = self.tracked_flights[flight_id]["data"]
+
+                    dpath.util.new(flight_details, 'trail/0/alt', flight.altitude)
+                    dpath.util.new(flight_details, 'trail/0/spd', flight.ground_speed)
+                    dpath.util.new(flight_details, 'trail/0/hd', flight.heading)
+                    dpath.util.new(flight_details, 'identification/id', flight.id)
+                    dpath.util.new(flight_details, 'identification/callsign', flight.callsign)
+                    
                     origin_position = (dpath.util.get(flight_details, ORIGIN_LATITUDE, default=None), dpath.util.get(flight_details, ORIGIN_LONGITUDE, default=None))
                     destination_position = (dpath.util.get(flight_details, DESTINATION_LATITUDE, default=None), dpath.util.get(flight_details, DESTINATION_LONGITUDE, default=None))
                     current_position = (flight.latitude, flight.longitude)
-
-                    total_distance_km = 0
-                    distance_traveled_km = 0
-                    progress_percent = 0
+                    
+                    total_distance_km, distance_traveled_km, progress_percent = 0, 0, 0
 
                     if all(position is not None for position in origin_position) and all(position is not None for position in destination_position) and all(position is not None for position in current_position):
                         total_distance_km = round(geodesic(origin_position, destination_position).km)
                         distance_traveled_km = round(geodesic(origin_position, current_position).km)
                         if total_distance_km > 0:
                             progress_percent = min(round((distance_traveled_km / total_distance_km) * 100), 100)
-                    
+
                     flight_details['total_distance_km'] = total_distance_km
                     flight_details['distance_traveled_km'] = distance_traveled_km
                     flight_details['progress_percent'] = progress_percent
                     
-                    visible_flights.append(flight_details)
-            return visible_flights
+                    self.tracked_flights[flight_id]["last_seen"] = time.time()
+
+            expired_flight_ids = []
+            for flight_id, flight_info in self.tracked_flights.items():
+                if flight_id not in currently_visible_ids:
+                    if time.time() - flight_info.get("last_seen", 0) > hold_seconds:
+                        _LOGGER.debug(f"Flight {flight_id} has expired and will be removed.")
+                        expired_flight_ids.append(flight_id)
+
+            historic_max_count = self._config.get("historic_flights_max_count", 0)
+            for flight_id in expired_flight_ids:
+                if flight_id in self.tracked_flights:
+                    self.historic_flights.insert(0, self.tracked_flights[flight_id])
+                    del self.tracked_flights[flight_id]
+
+            if len(self.historic_flights) > historic_max_count:
+                self.historic_flights = self.historic_flights[:historic_max_count]
+
+            return list(self.tracked_flights.values())
+
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}")
