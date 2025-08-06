@@ -8,7 +8,8 @@
     "requirements": [
       "FlightRadarAPI==1.4.0",
       "dpath==2.2.0",
-      "geopy==2.4.1"
+      "geopy==2.4.1",
+      "folium==0.20.0"
     ],
     "version": "1.0.0",
     "iot_class": "cloud_polling"

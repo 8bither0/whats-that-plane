@@ -1,7 +1,7 @@
 # What's that plane?!
 A Home Assistant integration made for my partner who enjoys looking up flight information, specifically for planes that pass by her office window.
 
-The unique part about this integration is that it will simulate a cone of vision in a specified direction and only report back flight information within the FOV. This cone of vision acts as the filter for returned flight information rather than an entire circle radius from the defined home position (though this is also still possible by setting your FOV cone to 360°).
+The unique part about this integration is that it will simulate a cone of vision in a specified direction and only report back flight information within the FOV. This cone of vision acts as the filter for returned flight information rather than an entire circle radius from the defined home position.
 
 Once dialled in, you or your partner can also scream **"WHAT'S THAT PLANE?!"** every time a plane passes by and view a bunch of interesting stats while it's in line of sight. This can quickly become out of hand and you may start collecting sightings of planes' shiny custom livery variants.
 
@@ -52,21 +52,29 @@ To initially configure the integration, define the information below. This can b
 | `location_name`                     | ❌       | `Home`        | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries. |
 | `latitude`                          | ✅       | `51.5285262`  | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
 | `longitude`                         | ✅       | `-0.2663999`  | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `radius_km`                         | ✅       | `5`                             | The radius distance boundary from your current location. e.g. `5` = 5km |
-| `facing_direction`                  | ✅       | `0`                             | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
-| `fov_cone`                          | ✅       | `90`                            | The number of degrees the field of view cone should be. |
-| `update_interval`                   | ✅       | `10`                            | The number of seconds between each poll for flight information. |
-| `filter_flight_altitude_ft_minimum` | ❌       | `0`                             | The minimum flight altitude in feet for flights to be recorded. |
-| `filter_flight_altitude_ft_maximum` | ❌       | `60000`                         | The maximum flight altitude in feet for flights to be recorded. |
-| `hold_flight_data_seconds`          | ❌       | `0`                             | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone. |
-| `historic_flights_max_count`        | ❌       | `0`                             | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised. |
-| `distance_units`                    | ❌       | metric (kilometres (km))        | The unit of measurement to record flight distance in. |
-| `altitude_units`                    | ❌       | imperial (feet (ft))            | The unit of measurement to record flight altitude in. |
-| `speed_units`                       | ❌       | imperial (miles per hour (mph)) | The unit of measurement to record flight speed in. |
+| `radius_km`                         | ✅       | `5`           | The radius distance boundary from your current location. e.g. `5` = 5km |
+| `facing_direction`                  | ✅       | `0`           | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
+| `fov_cone`                          | ✅       | `90`          | The number of degrees the field of view cone should be. |
+| `update_interval`                   | ✅       | `10`          | The number of seconds between each poll for flight information. |
+| `filter_flight_altitude_ft_minimum` | ❌       | `0`           | The minimum flight altitude in feet for flights to be shown. |
+| `filter_flight_altitude_ft_maximum` | ❌       | `60000`       | The maximum flight altitude in feet for flights to be shown. |
+| `hold_flight_data_seconds`          | ❌       | `0`           | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone. |
+| `historic_flights_max_count`        | ❌       | `0`           | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised. |
+| `visualise_fov_cone`                | ❌       | ✅            | If checked, a HTML map which visualises your defined location and relative FOV cone will be generated. This is useful when first configuring an entry to ensure it matches your desired real life FOV. The HTML file is saved in the following location / format on your Home Assistant file system `config/www/community/whats_that_plane/visualise_fov_{location_name}.html`. If `location_name` is empty, the file is named `visualise_fov_default.html`. |
 
-> 💡 **TIP**: To make the initial configuration process easier, you can use the map card to easily visualise your FOV cone settings while you adjust the initial settings. See [Visualising recorded flights on a map card](#Visualising-recorded-flights-on-a-map-card) for more information.
+> **TIP**: To make the initial configuration process easier, you can use `visualise_fov_cone` and create a dashboard card to easily visualise your FOV cone settings.
+>
+> ![Example map](https://raw.githubusercontent.com/8bither0/whats-that-plane/main/example_map.jpg)
+>
+> Use the template below and replace [`default`] with your location name if you specified one during setup.
+> ```
+> type: iframe
+> url: /local/community/whats_that_plane/visualise_fov_default.html
+> aspect_ratio: 100%
+> ```
+> Once the dashboard card is set up, simply change your configuration settings then refer back to the dashboard card to view how your edits change the FOV cone **(you may need to hard refresh your browser page to force an update due to caching)**. Or you can download the HTML file directly from your Home Assistant file system.
 
-After configuring the integration, a new sensor named `sensor.visible_flights` will be created. This will update at the frequency defined by the option `update_interval` and list flights visible within the defined field of view or additionally store flights that have recently left the defined field of view if the setting `historic_flights_max_count` is set to 1 or more. The exposed sensor information can be used to create a variety of interesting dashboard cards. See [Adding visible flight information card to your dashboard](#Adding-visible-flight-information-card-to-your-dashboard) for more information.
+After configuring the integration, a new sensor named `sensor.visible_flights` will be created. This will update at the frequency defined by the option `update_interval` and list flights visible within the defined field of view. The exposed sensor information can be used to create a variety of interesting dashboard cards. See [Adding visible flight information card to your dashboard](#Adding-visible-flight-information-card-to-your-dashboard) for more information.
 
 ## Adding visible flight information card to your dashboard
 The template code required to achieve the card shown in the screenshot above can be found below. To create the card in dashboards that you have control over and are able to add cards to:
@@ -79,12 +87,14 @@ The template code required to achieve the card shown in the screenshot above can
 
 > If you'd like to extend this card to show historic flight data of flights that have recently left your FOV cone, complete this section first then ensure that your configuration setting `historic_flights_max_count` is 1 or more and move onto [Viewing historic flight information](#Viewing-historic-flight-information).
 
-> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please find and replace your sensor name before pasting (Default: `sensor.visible_flights`):
+> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please ensure that the sensor name on line 6 is correct (Default: `sensor.visible_flights`):
 
 ```
 type: markdown
-title: What's that plane?!
 content: >-
+
+  # What's that plane?!
+
   {% set flights = state_attr('sensor.visible_flights', 'flights') %}
   {% if flights and flights | count > 0 %}
   {% for flight in flights %}
@@ -102,12 +112,12 @@ content: >-
   ✈️ **{{ flight.airline_name }} [**{{ flight.callsign }}**]({{ flight.flightradar_link }}) (**{{ flight.origin_airport_code }} → {{ flight.destination_airport_code }}**)**
 
 
-  {% if flight.total_distance and flight.total_distance > 0 %}
+  {% if flight.total_distance_km and flight.total_distance_km > 0 %}
     {%- set bar_width = 20 -%}
     {%- set plane_pos = max(1, (bar_width * flight.progress_percent / 100) | round | int) -%}
     **{{ flight.origin_country_code_long or flight.origin_country_code }} {{ flight.origin_flag_emoji or flight.origin_airport_code }}** `{{ '─' * (plane_pos - 1) }}✈️{{ '─' * (bar_width - plane_pos) }}` **{{ flight.destination_flag_emoji or flight.destination_airport_code }} {{ flight.destination_country_code_long or flight.destination_country_code }}**
-    📏 **Distance:** *{{ flight.distance_traveled }} of {{ flight.total_distance }} {{ state_attr('sensor.visible_flights', 'config')['distance_units'].split('(')[-1] | replace(')', '') }} ({{ flight.progress_percent }}%)*
-    📈 **Altitude:** {{ flight.altitude | default(0, true) | round(0) }} {{ state_attr('sensor.visible_flights', 'config')['altitude_units'].split('(')[-1] | replace(')', '') }} | **Speed:** {{ flight.ground_speed_kts | default(0, true) }} kts ({{ (flight.ground_speed | default(0, true)) | round(0) }} {{ state_attr('sensor.visible_flights', 'config')['speed_units'].split('(')[-1] | replace(')', '') }})
+    📏 **Distance:** *{{ flight.distance_traveled_km }} of {{ flight.total_distance_km }} km ({{ flight.progress_percent }}%)*
+    📈 **Altitude:** {{ flight.altitude_ft | default(0, true) | round(0) }} ft | **Speed:** {{ flight.ground_speed_kts | default(0, true) }} kts ({{ ((flight.ground_speed_kts | default(0, true)) * 1.15078) | round(0) }} mph)
     {% if flight.total_flight_time_formatted %} 🕑 **Total Flight Time:** {{ flight.total_flight_time_formatted }}
     {% endif %}
   {% endif %}
@@ -169,11 +179,9 @@ After you've already configured your main dashboard card (see [Adding visible fl
 
 This section basically clones the existing card but only shows it for historic flights. The only real change is the addition of a last seen time on the title line for each flight.
 
-**N.B.** It's important to note that when a plane leaves your defined FOV cone, its flight information will stop updating as the integration stops tracking the flight at this point. Stats are correct up to the moment the flight leaves the FOV cone, at which point the data is frozen.
-
 ![Example history](https://raw.githubusercontent.com/8bither0/whats-that-plane/main/example_history.jpg)
 
-> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please find and replace your sensor name before pasting (Default: `sensor.visible_flights`):
+> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please ensure that the sensor name on line 7 is correct (Default: `sensor.visible_flights`):
 
 ```
 
@@ -199,12 +207,12 @@ This section basically clones the existing card but only shows it for historic f
   ✈️ **{{ flight.airline_name }} [**{{ flight.callsign }}**]({{ flight.flightradar_link }}) (**{{ flight.origin_airport_code }} → {{ flight.destination_airport_code }}**)** {% if flight.last_seen_time_formatted %} | *{{ flight.last_seen_time_formatted }}* {% endif %}
 
 
-  {% if flight.total_distance and flight.total_distance > 0 %}
+  {% if flight.total_distance_km and flight.total_distance_km > 0 %}
     {%- set bar_width = 20 -%}
     {%- set plane_pos = max(1, (bar_width * flight.progress_percent / 100) | round | int) -%}
     **{{ flight.origin_country_code_long or flight.origin_country_code }} {{ flight.origin_flag_emoji or flight.origin_airport_code }}** `{{ '─' * (plane_pos - 1) }}✈️{{ '─' * (bar_width - plane_pos) }}` **{{ flight.destination_flag_emoji or flight.destination_airport_code }} {{ flight.destination_country_code_long or flight.destination_country_code }}**
-    📏 **Distance:** *{{ flight.distance_traveled }} of {{ flight.total_distance }} {{ state_attr('sensor.visible_flights', 'config')['distance_units'].split('(')[-1] | replace(')', '') }} ({{ flight.progress_percent }}%)*
-    📈 **Altitude:** {{ flight.altitude | default(0, true) | round(0) }} {{ state_attr('sensor.visible_flights', 'config')['altitude_units'].split('(')[-1] | replace(')', '') }} | **Speed:** {{ flight.ground_speed_kts | default(0, true) }} kts ({{ (flight.ground_speed | default(0, true)) | round(0) }} {{ state_attr('sensor.visible_flights', 'config')['speed_units'].split('(')[-1] | replace(')', '') }})
+    📏 **Distance:** *{{ flight.distance_traveled_km }} of {{ flight.total_distance_km }} km ({{ flight.progress_percent }}%)*
+    📈 **Altitude:** {{ flight.altitude_ft | default(0, true) | round(0) }} ft | **Speed:** {{ flight.ground_speed_kts | default(0, true) }} kts ({{ ((flight.ground_speed_kts | default(0, true)) * 1.15078) | round(0) }} mph)
     {% if flight.total_flight_time_formatted %} 🕑 **Total Flight Time:** {{ flight.total_flight_time_formatted }}
     {% endif %}
   {% endif %}
@@ -258,42 +266,6 @@ This section basically clones the existing card but only shows it for historic f
     No recent flight history.
   {% endif %}
 ```
-
-## Visualising recorded flights on a map card
-It's possible to visualise recorded flights and their flight trails on a map card to achieve the map card shown in the video demonstration below. This is a great way to make your dashboard more interactive and visualise where flights have come from and where they're going to. Or, simply use the map as a helper when initially configuring your FOV cone settings:
-
-https://github.com/user-attachments/assets/43a910b3-c2c1-41b1-8d23-74874c7dbaf3
-
-> ⚠️ Ensure that you have at least one configured entry before trying to use the map card.
-
-To add the map card to dashboards that you have control over and are able to add cards to:
-1. Click the pencil icon in the top right corner to `Edit dashboard`.
-2. Click the `Add card` button in the bottom right corner.
-3. Search for and click on the `Manual` card type.
-4. Copy and paste the code below into the code text field.
-5. Click `Save`.
-6. Click `Done` in the top right corner.
-
-> If you haven't changed the default name of the sensor, you should simply be able to copy and paste the code below and it should work with no changes required. Otherwise, please find and replace your sensor name before pasting (Default: `sensor.visible_flights`):
-
-```
-square: true
-type: grid
-cards:
-  - type: custom:whats-that-plane-map
-    entity: sensor.visible_flights
-columns: 1
-grid_options:
-  columns: full
-```
-
-> 💡 **TIP**: To make the initial configuration process easier, you can use the map card to easily visualise your FOV cone settings.
->
-> ![Example map](https://raw.githubusercontent.com/8bither0/whats-that-plane/main/example_map.jpg)
->
-> Once the map card is added to your dashboard, simply change your configuration settings then refer back to the dashboard card to view how your edits change the FOV cone **(you will need to refresh your dashboard page to force an update due to caching)**.
-
-**N.B.** It's important to note that when a plane leaves your defined FOV cone, its flight information will stop updating as the integration stops tracking the flight at this point. Stats are correct up to the moment the flight leaves the FOV cone, at which point the data is frozen.
 
 ## Support
 This was a fun little weekend project and I'm unlikely to actively support this. However, if you encounter any issues or have questions, please open an [issue](https://github.com/8bither0/whats-that-plane/issues) on GitHub and I will review if/when I'm able to.
