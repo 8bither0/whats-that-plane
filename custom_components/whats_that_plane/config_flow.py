@@ -29,7 +29,9 @@ class WhatsThatPlaneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional("filter_flight_altitude_ft_maximum", default=60000): vol.Coerce(int),
             vol.Optional("hold_flight_data_seconds", default=0): vol.Coerce(int),
             vol.Optional("historic_flights_max_count", default=0): vol.Coerce(int),
-            vol.Optional("visualise_fov_cone", default=False): bool,
+            vol.Optional("distance_units", default="imperial (miles (mi))"): vol.In(["metric (kilometres (km))", "imperial (miles (mi))"]),
+            vol.Optional("altitude_units", default="imperial (feet (ft))"): vol.In(["metric (metres (m))", "imperial (feet (ft))"]),
+            vol.Optional("speed_units", default="imperial (miles per hour (mph))"): vol.In(["metric (kilometres per hour (km/h))", "imperial (miles per hour (mph))"]),
         })
         return self.async_show_form(step_id="user", data_schema=data_schema)
 
@@ -42,17 +44,7 @@ class WhatsThatPlaneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class WhatsThatPlaneOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            visualise = user_input.pop("visualise_fov_cone", False)
             new_options = {**self.config_entry.options, **user_input}
-
-            if visualise:
-                service_config = {**self.config_entry.data, **new_options}
-                await self.hass.services.async_call(
-                    DOMAIN,
-                    "visualise_fov_cone",
-                    {"config": service_config},
-                    blocking=True,
-                )
 
             location_name = new_options.get("location_name", "").strip()
             title = "Visible Flights"
@@ -77,6 +69,8 @@ class WhatsThatPlaneOptionsFlow(config_entries.OptionsFlow):
             vol.Optional("filter_flight_altitude_ft_maximum", default=current_config.get("filter_flight_altitude_ft_maximum", 60000)): vol.Coerce(int),
             vol.Optional("hold_flight_data_seconds", default=current_config.get("hold_flight_data_seconds", 0)): vol.Coerce(int),
             vol.Optional("historic_flights_max_count", default=current_config.get("historic_flights_max_count", 0)): vol.Coerce(int),
-            vol.Optional("visualise_fov_cone", default=False): bool,
+            vol.Optional("distance_units", default=current_config.get("distance_units", "imperial (miles (mi))")): vol.In(["metric (kilometres (km))", "imperial (miles (mi))"]),
+            vol.Optional("altitude_units", default=current_config.get("altitude_units", "imperial (feet (ft))")): vol.In(["metric (metres (m))", "imperial (feet (ft))"]),
+            vol.Optional("speed_units", default=current_config.get("speed_units", "imperial (miles per hour (mph))")): vol.In(["metric (kilometres per hour (km/h))", "imperial (miles per hour (mph))"]),
         })
         return self.async_show_form(step_id="init", data_schema=options_schema)

@@ -19,9 +19,12 @@ MEDIUM_AIRCRAFT_IMAGE = 'aircraft/images/medium/0/src'
 SMALL_AIRCRAFT_IMAGE = 'aircraft/images/small/0/src'
 THUMBNAIL_AIRCRAFT_IMAGE = 'aircraft/images/thumbnails/0/src'
 
-ALTITUDE = 'trail/0/alt'
-GROUND_SPEED = 'trail/0/spd'
-HEADING = 'trail/0/hd'
+ALTITUDE = 'altitude'
+GROUND_SPEED = 'ground_speed'
+GROUND_SPEED_KTS = 'ground_speed_kts'
+HEADING = 'heading'
+LATITUDE = 'latitude'
+LONGITUDE = 'longitude'
 
 ORIGIN_CITY = 'airport/origin/position/region/city'
 ORIGIN_COUNTRY = 'airport/origin/position/country/name'
@@ -30,6 +33,8 @@ ORIGIN_COUNTRY_CODELONG = 'airport/origin/position/country/codeLong'
 ORIGIN_AIRPORT_NAME = 'airport/origin/name'
 ORIGIN_AIRPORT_CODE = 'airport/origin/code/iata'
 ORIGIN_TIMEZONE_NAME = 'airport/origin/timezone/name'
+ORIGIN_LATITUDE = 'airport/origin/position/latitude'
+ORIGIN_LONGITUDE = 'airport/origin/position/longitude'
 
 DESTINATION_CITY = 'airport/destination/position/region/city'
 DESTINATION_COUNTRY = 'airport/destination/position/country/name'
@@ -38,6 +43,8 @@ DESTINATION_COUNTRY_CODELONG = 'airport/destination/position/country/codeLong'
 DESTINATION_AIRPORT_NAME = 'airport/destination/name'
 DESTINATION_AIRPORT_CODE = 'airport/destination/code/iata'
 DESTINATION_TIMEZONE_NAME = 'airport/destination/timezone/name'
+DESTINATION_LATITUDE = 'airport/destination/position/latitude'
+DESTINATION_LONGITUDE = 'airport/destination/position/longitude'
 
 TIME_SCHEDULED_DEPARTURE = 'time/scheduled/departure'
 TIME_ESTIMATED_DEPARTURE = 'time/estimated/departure'
@@ -63,6 +70,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         self._attr_name = "Visible Flights"
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_visible_flights"
         self._attr_icon = "mdi:airplane"
+        self._attr_extra_state_attributes = {}
         self.update_sensor_data()
 
     def _code_to_flag_emoji(self, country_code):
@@ -76,13 +84,13 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         try:
             utc_datetime = datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
             local_datetime = utc_datetime.astimezone(ZoneInfo(tz_name))
-            
+
             timezone_abbreviation = TIMEZONE_ABBREVIATION_MAP.get(tz_name, local_datetime.tzname())
-            
+
             offset_seconds = local_datetime.utcoffset().total_seconds()
             offset_hours = offset_seconds / 3600
             offset_string = f"UTC{int(offset_hours):+}"
-            
+
             if timezone_abbreviation and any(c.isalpha() for c in timezone_abbreviation):
                 return f"{local_datetime.strftime('%-I:%M %p')} ({timezone_abbreviation} {offset_string})"
             else:
@@ -94,10 +102,10 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
     def _format_duration(self, seconds):
         if seconds is None or seconds < 0:
             return None
-        
+
         hours, remainder = divmod(seconds, 3600)
         minutes, _ = divmod(remainder, 60)
-        
+
         if hours < 1:
             return f"{int(minutes)} minutes"
         else:
@@ -109,7 +117,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             return None
 
         # Flight information
-        callsign = dpath.util.get(flight, CALLSIGN, default=None)
+        callsign = dpath.util.get(flight, CALLSIGN, default=None) or flight.get('callsign')
         flight_id = dpath.util.get(flight, FLIGHT_ID, default=None)
         origin_country_code = dpath.util.get(flight, ORIGIN_COUNTRY_CODE, default=None)
         destination_country_code = dpath.util.get(flight, DESTINATION_COUNTRY_CODE, default=None)
@@ -135,24 +143,24 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         # Calculate delays
         departure_delay_mins = None
         if scheduled_departure and real_departure:
-            departure_delay_mins = round((real_departure - scheduled_departure) / 60)
-        
+            departure_delay_mins = (real_departure - scheduled_departure) // 60
+
         estimated_departure_delay_mins = None
         if scheduled_departure and estimated_departure:
-            estimated_departure_delay_mins = round((estimated_departure - scheduled_departure) / 60)
+            estimated_departure_delay_mins = (estimated_departure - scheduled_departure) // 60
 
         arrival_delay_mins = None
         if scheduled_arrival and real_arrival:
-            arrival_delay_mins = round((real_arrival - scheduled_arrival) / 60)
+            arrival_delay_mins = (real_arrival - scheduled_arrival) // 60
 
         estimated_arrival_delay_mins = None
         if scheduled_arrival and estimated_arrival:
-            estimated_arrival_delay_mins = round((estimated_arrival - scheduled_arrival) / 60)
+            estimated_arrival_delay_mins = (estimated_arrival - scheduled_arrival) // 60
 
         # Calculate total flight time
         effective_departure = real_departure or estimated_departure or scheduled_departure
         effective_arrival = real_arrival or estimated_arrival or scheduled_arrival
-        
+
         total_flight_time_formatted = None
         if effective_departure and effective_arrival:
             duration_seconds = effective_arrival - effective_departure
@@ -163,7 +171,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         last_seen_timestamp = flight_info.get("last_seen")
         if last_seen_timestamp:
             time_diff = datetime.now(timezone.utc) - datetime.fromtimestamp(last_seen_timestamp, tz=timezone.utc)
-            
+
             days = time_diff.days
             hours, remainder = divmod(time_diff.seconds, 3600)
             minutes, _ = divmod(remainder, 60)
@@ -176,9 +184,10 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
                 last_seen_time_formatted = f"{minutes}m ago"
             else:
                 last_seen_time_formatted = "Just now"
-        
+
         return {
             "callsign": callsign,
+            "flight_id": flight_id,
             "flightradar_link": flightradar_link,
             "airline_name": dpath.util.get(flight, AIRLINE_NAME, default=None),
             "aircraft_model": dpath.util.get(flight, AIRCRAFT_MODEL, default=None),
@@ -189,13 +198,17 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "small_aircraft_image_link": dpath.util.get(flight, SMALL_AIRCRAFT_IMAGE, default=None),
             "thumbnail_aircraft_image_link": dpath.util.get(flight, THUMBNAIL_AIRCRAFT_IMAGE, default=None),
 
-            "altitude_ft": dpath.util.get(flight, ALTITUDE, default=None),
-            "ground_speed_kts": dpath.util.get(flight, GROUND_SPEED, default=None),
-            "heading": dpath.util.get(flight, HEADING, default=None),
-            "total_distance_km": flight.get("total_distance_km"),
-            "distance_traveled_km": flight.get("distance_traveled_km"),
+            "latitude": flight.get(LATITUDE),
+            "longitude": flight.get(LONGITUDE),
+            "altitude": flight.get(ALTITUDE),
+            "ground_speed": flight.get(GROUND_SPEED),
+            "ground_speed_kts": flight.get(GROUND_SPEED_KTS),
+            "heading": flight.get(HEADING),
+            "total_distance": flight.get("total_distance"),
+            "distance_traveled": flight.get("distance_traveled"),
             "progress_percent": flight.get("progress_percent"),
             "total_flight_time_formatted": total_flight_time_formatted,
+            "trail": flight.get("trail", []),
 
             "origin_city": dpath.util.get(flight, ORIGIN_CITY, default=None),
             "origin_country": dpath.util.get(flight, ORIGIN_COUNTRY, default=None),
@@ -204,6 +217,8 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "origin_flag_emoji": self._code_to_flag_emoji(origin_2_letter_code),
             "origin_airport_name": dpath.util.get(flight, ORIGIN_AIRPORT_NAME, default=None),
             "origin_airport_code": dpath.util.get(flight, ORIGIN_AIRPORT_CODE, default=None),
+            "origin_latitude": dpath.util.get(flight, ORIGIN_LATITUDE, default=None),
+            "origin_longitude": dpath.util.get(flight, ORIGIN_LONGITUDE, default=None),
 
             "destination_city": dpath.util.get(flight, DESTINATION_CITY, default=None),
             "destination_country": dpath.util.get(flight, DESTINATION_COUNTRY, default=None),
@@ -212,7 +227,9 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "destination_flag_emoji": self._code_to_flag_emoji(destination_2_letter_code),
             "destination_airport_name": dpath.util.get(flight, DESTINATION_AIRPORT_NAME, default=None),
             "destination_airport_code": dpath.util.get(flight, DESTINATION_AIRPORT_CODE, default=None),
-            
+            "destination_latitude": dpath.util.get(flight, DESTINATION_LATITUDE, default=None),
+            "destination_longitude": dpath.util.get(flight, DESTINATION_LONGITUDE, default=None),
+
             "scheduled_departure_time_local": self._format_time_local(scheduled_departure, origin_timezone_name),
             "estimated_departure_time_local": self._format_time_local(estimated_departure, origin_timezone_name),
             "real_departure_time_local": self._format_time_local(real_departure, origin_timezone_name),
@@ -245,11 +262,23 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         self._attr_native_value = len(visible_flights)
 
         flights_data = [self._format_flight_data(flight) for flight in visible_flights if flight]
-        
         historic_flights = self.coordinator.historic_flights or []
         historic_flights_data = [self._format_flight_data(flight) for flight in historic_flights if flight]
 
+        config = self.coordinator.config
+        config_attributes = {
+            "latitude": config.get("latitude"),
+            "longitude": config.get("longitude"),
+            "radius_km": config.get("radius_km"),
+            "facing_direction": config.get("facing_direction"),
+            "fov_cone": config.get("fov_cone"),
+            "distance_units": config.get("distance_units", "metric"),
+            "altitude_units": config.get("altitude_units", "imperial"),
+            "speed_units": config.get("speed_units", "imperial"),
+        }
+
         self._attr_extra_state_attributes = {
+            "config": config_attributes,
             "flights": flights_data,
             "historic_flights": historic_flights_data,
         }
