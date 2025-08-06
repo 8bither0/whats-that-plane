@@ -47,22 +47,22 @@ See [Adding visible flight information card to your dashboard](#Adding-visible-f
 ## Configuration
 To initially configure the integration, define the information below. This can be reconfigured via configuration entry options after initial setup:
 
-| Option                              | Required | Example value | Description |
-| :-------------------                | :------: | :-----------: | :---------- |
-| `location_name`                     | ❌       | `Home`        | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries. |
-| `latitude`                          | ✅       | `51.5285262`  | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `longitude`                         | ✅       | `-0.2663999`  | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `radius_km`                         | ✅       | `5`                             | The radius distance boundary from your current location. e.g. `5` = 5km |
-| `facing_direction`                  | ✅       | `0`                             | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
-| `fov_cone`                          | ✅       | `90`                            | The number of degrees the field of view cone should be. |
-| `update_interval`                   | ✅       | `10`                            | The number of seconds between each poll for flight information. |
-| `filter_flight_altitude_ft_minimum` | ❌       | `0`                             | The minimum flight altitude in feet for flights to be recorded. |
-| `filter_flight_altitude_ft_maximum` | ❌       | `60000`                         | The maximum flight altitude in feet for flights to be recorded. |
-| `hold_flight_data_seconds`          | ❌       | `0`                             | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone. |
-| `historic_flights_max_count`        | ❌       | `0`                             | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised. |
-| `distance_units`                    | ❌       | metric (kilometres (km))        | The unit of measurement to record flight distance in. |
-| `altitude_units`                    | ❌       | imperial (feet (ft))            | The unit of measurement to record flight altitude in. |
-| `speed_units`                       | ❌       | imperial (miles per hour (mph)) | The unit of measurement to record flight speed in. |
+| Option                              | Required | Example value                     | Description |
+| :-------------------                | :------: | :-----------:                     | :---------- |
+| `location_name`                     | ❌       | `Home`                            | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries. |
+| `latitude`                          | ✅       | `51.5285262`                      | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
+| `longitude`                         | ✅       | `-0.2663999`                      | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
+| `radius_km`                         | ✅       | `5`                               | The radius distance boundary from your current location. e.g. `5` = 5km |
+| `facing_direction`                  | ✅       | `0`                               | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
+| `fov_cone`                          | ✅       | `90`                              | The number of degrees the field of view cone should be. |
+| `update_interval`                   | ✅       | `10`                              | The number of seconds between each poll for flight information. |
+| `filter_flight_altitude_ft_minimum` | ❌       | `0`                               | The minimum flight altitude in feet for flights to be recorded. |
+| `filter_flight_altitude_ft_maximum` | ❌       | `60000`                           | The maximum flight altitude in feet for flights to be recorded. |
+| `hold_flight_data_seconds`          | ❌       | `0`                               | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone. |
+| `historic_flights_max_count`        | ❌       | `0`                               | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised. |
+| `distance_units`                    | ❌       | `metric (kilometres (km))`        | The unit of measurement to record flight distance in. |
+| `altitude_units`                    | ❌       | `imperial (feet (ft))`            | The unit of measurement to record flight altitude in. |
+| `speed_units`                       | ❌       | `imperial (miles per hour (mph))` | The unit of measurement to record flight speed in. |
 
 > 💡 **TIP**: To make the initial configuration process easier, you can use the map card to easily visualise your FOV cone settings while you adjust the initial settings. See [Visualising recorded flights on a map card](#Visualising-recorded-flights-on-a-map-card) for more information.
 
