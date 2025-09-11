@@ -567,7 +567,7 @@ class WhatsThatPlaneMap extends HTMLElement {
     const locationIcon = L.divIcon({ html: `<svg viewbox="0 0 24 24" width="32" height="32" role="img" aria-hidden="true" style="color: #d32f2f; transform: translate3d(0, 0, 0);"><path fill="currentColor" d="M12,2C8.13,2 5,5.13 5,9C5,14.25 12,22 12,22S19,14.25 19,9C19,5.13 15.87,2 12,2M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5Z" /></svg>`, className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
     this._locationMarker = L.marker([config.latitude, config.longitude], { icon: locationIcon }).addTo(this._locationLayer).bindPopup("<b>My Location</b>");
 
-    const fovPoints = this._calculateFovCone(config.latitude, config.longitude, config.facing_direction, config.fov_cone, config.radius_km);
+  const fovPoints = this._calculateFovCone(config.latitude, config.longitude, config.facing_direction, config.fov_cone, config.radius_metres / 1000);
     this._fovCone = L.polygon(fovPoints, { color: 'green', fillOpacity: 0.05, opacity: 0.3, interactive: false }).addTo(this._locationLayer);
   }
 

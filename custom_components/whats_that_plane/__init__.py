@@ -203,7 +203,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
             config = self.config
             your_latitude = config["latitude"]
             your_longitude = config["longitude"]
-            radius_km = config["radius_km"] * 1000
+            radius_metres = config["radius_metres"]
             minimum_altitude = config.get("filter_flight_altitude_ft_minimum", 0)
             maximum_altitude = config.get("filter_flight_altitude_ft_maximum", 60000)
             hold_seconds = config.get("hold_flight_data_seconds", 0)
@@ -213,7 +213,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
 
 
             bounds = await self.hass.async_add_executor_job(
-                self.fr_api.get_bounds_by_point, your_latitude, your_longitude, radius_km
+                self.fr_api.get_bounds_by_point, your_latitude, your_longitude, radius_metres
             )
             all_flights = await self.hass.async_add_executor_job(
                 self.fr_api.get_flights, None, bounds
@@ -227,7 +227,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
                     continue
 
                 flight_distance_km = geodesic((your_latitude, your_longitude), (flight.latitude, flight.longitude)).km
-                if flight_distance_km > config["radius_km"]:
+                if flight_distance_km * 1000 > config["radius_metres"]:
                     continue
 
                 flight_altitude_for_filter = flight.altitude if flight.altitude is not None else 0

@@ -21,7 +21,7 @@ class WhatsThatPlaneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional("location_name"): str,
             vol.Required("latitude", default=default_latitude): vol.All(vol.Coerce(float), vol.Range(min=-90, max=90)),
             vol.Required("longitude", default=default_longitude): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
-            vol.Required("radius_km", default=5): vol.Coerce(int),
+            vol.Required("radius_metres", default=1000): vol.Coerce(int),
             vol.Required("facing_direction", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=360)),
             vol.Required("fov_cone", default=90): vol.All(vol.Coerce(int), vol.Range(min=1, max=360)),
             vol.Required("update_interval", default=10): vol.All(vol.Coerce(int), vol.Range(min=1)),

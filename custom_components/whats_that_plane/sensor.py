@@ -331,7 +331,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         config_attributes = {
             "latitude": config.get("latitude"),
             "longitude": config.get("longitude"),
-            "radius_km": config.get("radius_km"),
+            "radius_metres": config.get("radius_metres"),
             "facing_direction": config.get("facing_direction"),
             "fov_cone": config.get("fov_cone"),
             "distance_units": config.get("distance_units", "metric"),
