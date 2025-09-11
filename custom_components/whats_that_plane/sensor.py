@@ -7,9 +7,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, COUNTRY_CODE_MAP, TIMEZONE_ABBREVIATION_MAP
+from pycountry import countries
 
 CALLSIGN = 'identification/callsign'
 FLIGHT_ID = 'identification/id'
+FLIGHT_NUMBER = 'identification/number/default'
 AIRLINE_NAME = 'airline/name'
 AIRCRAFT_MODEL = 'aircraft/model/text'
 AIRCRAFT_TYPE = 'aircraft/model/code'
@@ -78,6 +80,57 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             return None
         return "".join(chr(ord(char.upper()) - 65 + 127462) for char in country_code)
 
+    def _heading_to_compass(self, heading):
+        """Convert numeric heading to compass direction."""
+        if heading is None:
+            return None
+        
+        try:
+            degrees = float(heading)
+            
+            # Normalize degrees to 0-359.99 range
+            degrees = degrees % 360
+            
+            if degrees >= 337.5 or degrees < 22.5:
+                return 'N'
+            elif degrees >= 22.5 and degrees < 67.5:
+                return 'NE'
+            elif degrees >= 67.5 and degrees < 112.5:
+                return 'E'
+            elif degrees >= 112.5 and degrees < 157.5:
+                return 'SE'
+            elif degrees >= 157.5 and degrees < 202.5:
+                return 'S'
+            elif degrees >= 202.5 and degrees < 247.5:
+                return 'SW'
+            elif degrees >= 247.5 and degrees < 292.5:
+                return 'W'
+            elif degrees >= 292.5 and degrees < 337.5:
+                return 'NW'
+            else:
+                return 'Unknown'
+        except (ValueError, TypeError):
+            return None
+
+    def _get_country_code_2_letter(self, country_code):
+        """Convert 3-letter country code to 2-letter code for flag APIs."""
+        if country_code is None:
+            return None
+        
+        # If already 2 letters, return as-is
+        if len(country_code) == 2:
+            return country_code
+        
+        # If 3 letters, convert to 2 letters using pycountry
+        if len(country_code) == 3:
+            try:
+                country = countries.get(alpha_3=country_code)
+                return country.alpha_2 if country is not None else None
+            except Exception:
+                return None
+        
+        return None
+
     def _format_time_local(self, timestamp, tz_name):
         if timestamp is None or not tz_name:
             return None
@@ -119,10 +172,15 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         # Flight information
         callsign = dpath.util.get(flight, CALLSIGN, default=None) or flight.get('callsign')
         flight_id = dpath.util.get(flight, FLIGHT_ID, default=None)
+        flight_number = dpath.util.get(flight, FLIGHT_NUMBER, default=None)
+        heading = flight.get(HEADING)
+        heading_compass = self._heading_to_compass(heading)
         origin_country_code = dpath.util.get(flight, ORIGIN_COUNTRY_CODE, default=None)
         destination_country_code = dpath.util.get(flight, DESTINATION_COUNTRY_CODE, default=None)
         origin_2_letter_code = COUNTRY_CODE_MAP.get(origin_country_code, origin_country_code)
         destination_2_letter_code = COUNTRY_CODE_MAP.get(destination_country_code, destination_country_code)
+        origin_country_code_flagsapi = self._get_country_code_2_letter(origin_country_code)
+        destination_country_code_flagsapi = self._get_country_code_2_letter(destination_country_code)
         flightradar_link = None
         if flight_id:
             if callsign == "Blocked":
@@ -188,6 +246,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
         return {
             "callsign": callsign,
             "flight_id": flight_id,
+            "flight_number": flight_number,
             "flightradar_link": flightradar_link,
             "airline_name": dpath.util.get(flight, AIRLINE_NAME, default=None),
             "aircraft_model": dpath.util.get(flight, AIRCRAFT_MODEL, default=None),
@@ -203,7 +262,8 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "altitude": flight.get(ALTITUDE),
             "ground_speed": flight.get(GROUND_SPEED),
             "ground_speed_kts": flight.get(GROUND_SPEED_KTS),
-            "heading": flight.get(HEADING),
+            "heading": heading,
+            "heading_compass": heading_compass,
             "total_distance": flight.get("total_distance"),
             "distance_traveled": flight.get("distance_traveled"),
             "progress_percent": flight.get("progress_percent"),
@@ -213,6 +273,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "origin_city": dpath.util.get(flight, ORIGIN_CITY, default=None),
             "origin_country": dpath.util.get(flight, ORIGIN_COUNTRY, default=None),
             "origin_country_code": origin_country_code,
+            "origin_country_code_flagsapi": origin_country_code_flagsapi,
             "origin_country_code_long": dpath.util.get(flight, ORIGIN_COUNTRY_CODELONG, default=None),
             "origin_flag_emoji": self._code_to_flag_emoji(origin_2_letter_code),
             "origin_airport_name": dpath.util.get(flight, ORIGIN_AIRPORT_NAME, default=None),
@@ -223,6 +284,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "destination_city": dpath.util.get(flight, DESTINATION_CITY, default=None),
             "destination_country": dpath.util.get(flight, DESTINATION_COUNTRY, default=None),
             "destination_country_code": destination_country_code,
+            "destination_country_code_flagsapi": destination_country_code_flagsapi,
             "destination_country_code_long": dpath.util.get(flight, DESTINATION_COUNTRY_CODELONG, default=None),
             "destination_flag_emoji": self._code_to_flag_emoji(destination_2_letter_code),
             "destination_airport_name": dpath.util.get(flight, DESTINATION_AIRPORT_NAME, default=None),
