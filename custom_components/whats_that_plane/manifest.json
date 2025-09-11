@@ -1,15 +1,16 @@
 {
-    "domain": "whats_that_plane",
-    "name": "What's that plane?!",
-    "config_flow": true,
-    "documentation": "https://github.com/8bither0/whats-that-plane",
-    "issue_tracker": "https://github.com/8bither0/whats-that-plane/issues",
-    "codeowners": ["@8bither0"],
-    "requirements": [
-      "FlightRadarAPI==1.4.0",
-      "dpath==2.2.0",
-      "geopy==2.4.1"
-    ],
-    "version": "1.0.0",
-    "iot_class": "cloud_polling"
-  }
+  "domain": "whats_that_plane",
+  "name": "What's that plane?! (Leon's Fork)",
+  "config_flow": true,
+  "documentation": "https://github.com/LeonArmston/whats-that-plane-leon",
+  "issue_tracker": "https://github.com/LeonArmston/whats-that-plane-leon/issues",
+  "codeowners": ["@LeonArmston"],
+  "requirements": [
+    "FlightRadarAPI==1.4.0",
+    "dpath==2.2.0",
+    "geopy==2.4.1",
+    "pycountry==23.12.11"
+  ],
+  "version": "2.0.0",
+  "iot_class": "cloud_polling"
+}
