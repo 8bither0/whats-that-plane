@@ -96,8 +96,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await register_lovelace_resource(
             hass, f"/local/community/{DOMAIN}/whats-that-plane-map.js"
         )
-        if hass.data.get("whats_that_plane_listener"):
-            hass.data.pop("whats_that_plane_listener")()
+        hass.data.pop("whats_that_plane_listener", None)
 
     if hass.state is CoreState.running:
         await _register_resource()
@@ -125,8 +124,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_remove_lovelace_resource(hass, f"/local/community/{DOMAIN}/whats-that-plane-map.js")
         await hass.async_add_executor_job(remove_frontend_files, hass)
 
-    if hass.data.get("whats_that_plane_listener"):
-        hass.data.pop("whats_that_plane_listener")()
+    if listener := hass.data.pop("whats_that_plane_listener", None):
+        listener()
 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
@@ -144,7 +143,7 @@ async def async_remove_lovelace_resource(hass: HomeAssistant, url: str):
     if lovelace and hasattr(lovelace, "resources"):
         resources = lovelace.resources
         resource_to_remove = next((res for res in resources.async_items() if res["url"] == url), None)
-        
+
         if resource_to_remove:
             try:
                 await resources.async_delete_item(resource_to_remove["id"])
@@ -167,6 +166,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
 
         update_seconds = self._config.get("update_interval", 60)
         self.fr_api = FlightRadar24API()
+        self.scraper = None
         self.tracked_flights = {}
         self.historic_flights = []
 
@@ -176,6 +176,20 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
             update_interval=timedelta(seconds=update_seconds),
         )
+
+    def _get_flight_details_scraper(self, flight_id: str) -> dict:
+        import cloudscraper
+        if self.scraper is None:
+            self.scraper = cloudscraper.create_scraper()
+            self.scraper.get("https://www.flightradar24.com/")
+        
+        url = f"https://data-live.flightradar24.com/clickhandler/?flight={flight_id}"
+        response = self.scraper.get(url, timeout=10)
+        if response.status_code == 403:
+            self.scraper.get("https://www.flightradar24.com/")
+            response = self.scraper.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
 
     @property
     def config(self):
@@ -242,7 +256,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
                     if flight_id not in self.tracked_flights:
                         _LOGGER.debug(f"New flight in FOV: {flight_id}")
                         try:
-                            flight_details = await self.hass.async_add_executor_job(self.fr_api.get_flight_details, flight)
+                            flight_details = await self.hass.async_add_executor_job(self._get_flight_details_scraper, flight.id)
                         except Exception as e:
                             _LOGGER.warning(f"Could not fetch details for {flight_id}: {e}")
                             flight_details = {}
@@ -272,7 +286,7 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
                     else:
                         flight_details['ground_speed_kts'] = 0
                         flight_details['ground_speed'] = 0
-                        
+
                     flight_details['callsign'] = flight.callsign
 
                     if 'trail' not in flight_details:
@@ -291,17 +305,17 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
 
                     dpath.util.new(flight_details, 'identification/id', flight.id)
                     dpath.util.new(flight_details, 'identification/callsign', flight.callsign)
-                    
+
                     origin_position = (dpath.util.get(flight_details, ORIGIN_LATITUDE, default=None), dpath.util.get(flight_details, ORIGIN_LONGITUDE, default=None))
                     destination_position = (dpath.util.get(flight_details, DESTINATION_LATITUDE, default=None), dpath.util.get(flight_details, DESTINATION_LONGITUDE, default=None))
                     current_position = (flight.latitude, flight.longitude)
-                    
+
                     total_distance, distance_traveled, progress_percent = 0, 0, 0
 
                     if all(position is not None for position in origin_position) and all(position is not None for position in destination_position) and all(position is not None for position in current_position):
                         total_dist_val_km = geodesic(origin_position, destination_position).km
                         distance_traveled_val_km = geodesic(origin_position, current_position).km
-                        
+
                         if distance_units.startswith('imperial'):
                             total_distance = round(total_dist_val_km * 0.621371)
                             distance_traveled = round(distance_traveled_val_km * 0.621371)
@@ -311,11 +325,11 @@ class WhatsThatPlaneCoordinator(DataUpdateCoordinator):
 
                         if total_distance > 0:
                             progress_percent = min(round((distance_traveled / total_distance) * 100), 100)
-                    
+
                     flight_details['total_distance'] = total_distance
                     flight_details['distance_traveled'] = distance_traveled
                     flight_details['progress_percent'] = progress_percent
-                    
+
                     self.tracked_flights[flight_id]["last_seen"] = time.time()
 
             expired_flight_ids = []
