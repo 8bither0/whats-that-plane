@@ -427,15 +427,6 @@ class WhatsThatPlaneMap extends HTMLElement {
             this._updateAllElementsOpacity();
         });
 
-
-        const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-        const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-        L.tileLayer(tileUrl, {
-            attribution: attribution,
-            maxZoom: 18,
-        }).addTo(this._map);
-
         this._map.whenReady(() => {
             loaderElement.style.display = 'none';
             mapElement.style.visibility = 'visible';
@@ -554,6 +545,19 @@ class WhatsThatPlaneMap extends HTMLElement {
   drawStaticElements() {
     const config = this._state.attributes.config;
     if (!config) return;
+
+    const cartoApiKey = config.carto_api_key?.trim();
+
+    const tileUrl = cartoApiKey
+        ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey)}`
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+    L.tileLayer(tileUrl, {
+        attribution: attribution,
+        maxZoom: 18,
+    }).addTo(this._map);
 
     this.staticElementsDrawn = true;
     

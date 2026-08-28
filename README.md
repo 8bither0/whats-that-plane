@@ -47,22 +47,23 @@ See [Adding visible flight information card to your dashboard](#Adding-visible-f
 ## Configuration
 To initially configure the integration, define the information below. This can be reconfigured via configuration entry options after initial setup:
 
-| Option                              | Required | Example value                     | Description |
-| :-------------------                | :------: | :-----------:                     | :---------- |
-| `location_name`                     | ❌       | `Home`                            | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries. |
-| `latitude`                          | ✅       | `51.5285262`                      | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `longitude`                         | ✅       | `-0.2663999`                      | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone). |
-| `radius_km`                         | ✅       | `5`                               | The radius distance boundary from your current location. e.g. `5` = 5km |
-| `facing_direction`                  | ✅       | `0`                               | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West. |
-| `fov_cone`                          | ✅       | `90`                              | The number of degrees the field of view cone should be. |
-| `update_interval`                   | ✅       | `10`                              | The number of seconds between each poll for flight information. |
-| `filter_flight_altitude_ft_minimum` | ❌       | `0`                               | The minimum flight altitude in feet for flights to be recorded. |
-| `filter_flight_altitude_ft_maximum` | ❌       | `60000`                           | The maximum flight altitude in feet for flights to be recorded. |
-| `hold_flight_data_seconds`          | ❌       | `0`                               | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone. |
-| `historic_flights_max_count`        | ❌       | `0`                               | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised. |
-| `distance_units`                    | ❌       | `metric (kilometres (km))`        | The unit of measurement to record flight distance in. |
-| `altitude_units`                    | ❌       | `imperial (feet (ft))`            | The unit of measurement to record flight altitude in. |
-| `speed_units`                       | ❌       | `imperial (miles per hour (mph))` | The unit of measurement to record flight speed in. |
+| Option                              | Required |             Example value             | Description                                                                                                                                                                                                                                                                                                                         |
+| :-------------------                | :------: |:-------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `location_name`                     | ❌       |                `Home`                 | A friendly name for your defined coordinates. This will be appended to the integration entry in the format `Visible Flights (Home)`. If empty, the integration entry will simply be called `Visible Flights`. This is useful when defining multiple entries.                                                                        |
+| `latitude`                          | ✅       |             `51.5285262`              | The latitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone).                                                                                                                                                    |
+| `longitude`                         | ✅       |             `-0.2663999`              | The longitude of your viewing location. This will default to the coordinates defined in your [homeassistant.local:8123/config/zone](http://homeassistant.local:8123/config/zone).                                                                                                                                                   |
+| `radius_km`                         | ✅       |                  `5`                  | The radius distance boundary from your current location. e.g. `5` = 5km                                                                                                                                                                                                                                                             |
+| `facing_direction`                  | ✅       |                  `0`                  | The degree bearing of the viewing direction. e.g. `0` = North, `90` = East, `180` = South, `270` = West.                                                                                                                                                                                                                            |
+| `fov_cone`                          | ✅       |                 `90`                  | The number of degrees the field of view cone should be.                                                                                                                                                                                                                                                                             |
+| `update_interval`                   | ✅       |                 `10`                  | The number of seconds between each poll for flight information.                                                                                                                                                                                                                                                                     |
+| `filter_flight_altitude_ft_minimum` | ❌       |                  `0`                  | The minimum flight altitude in feet for flights to be recorded.                                                                                                                                                                                                                                                                     |
+| `filter_flight_altitude_ft_maximum` | ❌       |                `60000`                | The maximum flight altitude in feet for flights to be recorded.                                                                                                                                                                                                                                                                     |
+| `hold_flight_data_seconds`          | ❌       |                  `0`                  | The total number of seconds to keep a flight's data after it leaves your field of view. This can act as a grace period for when you aren't able to view relevant data before the flight leaves your FOV cone.                                                                                                                       |
+| `historic_flights_max_count`        | ❌       |                  `0`                  | The total number of past flights to store in history. Can be used to show x number of flights that have recently left the FOV cone, useful for displaying "What was that plane?!" in case you miss it. See [Viewing historic flight information](#Viewing-historic-flight-information) for an example of how this can be utilised.  |
+| `carto_api_key`                     | ❌       | `xxx_xxxx_x_xxxxxxxxxxxxxxxxxxxxxxxx` | An optional CARTO API key to remove the `API KEY REQUIRED` watermark on maps. Only required if you use the map card.                                                                                                                                                                                                                |
+| `distance_units`                    | ❌       |      `metric (kilometres (km))`       | The unit of measurement to record flight distance in.                                                                                                                                                                                                                                                                               |
+| `altitude_units`                    | ❌       |        `imperial (feet (ft))`         | The unit of measurement to record flight altitude in.                                                                                                                                                                                                                                                                               |
+| `speed_units`                       | ❌       |   `imperial (miles per hour (mph))`   | The unit of measurement to record flight speed in.                                                                                                                                                                                                                                                                                  |
 
 > 💡 **TIP**: To make the initial configuration process easier, you can use the map card to easily visualise your FOV cone settings while you adjust the initial settings. See [Visualising recorded flights on a map card](#Visualising-recorded-flights-on-a-map-card) for more information.
 
@@ -260,6 +261,23 @@ This section basically clones the existing card but only shows it for historic f
 ```
 
 ## Visualising recorded flights on a map card
+
+> ⚠️ **From 27/08/2026 this integration's map provider, CARTO, requires an API key to remove the `API KEY REQUIRED` watermark on maps.**
+> 
+> If using the map card, you can obtain a CARTO API key and enter it in the `carto_api_key` configuration option. This setting is not required if you aren't using the map card.
+>
+> You can request a key from [CARTO](https://carto.com/basemaps/apikey/) which is usually delivered via email within minutes. When completing the form, you can use the following example values, substituting your own information where appropriate:
+>
+> - **Email address:** `email@domain.com`
+> - **Your name, or your organisation:** `Firstname Lastname`
+> - **Which domain(s) will use the basemaps?:** `homeassistant.local`
+> - **Is this a commercial project?:** `No — personal, hobby, academic, or a non-profit`
+> - **Roughly how many map loads a month do you expect?:** `Under 10,000`
+> - **Which basemap tiles do you use?:** `Raster (PNG tiles)`
+> - **What are you building?:** `Home Assistant integration to visualise overhead flights from a specific location: https://github.com/8bither0/whats-that-plane`
+>
+> Once you receive your API key, add it to the `carto_api_key` setting in the integration configuration options. You should complete this before proceeding with additional map card configuration.
+
 It's possible to visualise recorded flights and their flight trails on a map card to achieve the map card shown in the video demonstration below. This is a great way to make your dashboard more interactive and visualise where flights have come from and where they're going to. Or, simply use the map as a helper when initially configuring your FOV cone settings:
 
 https://github.com/user-attachments/assets/43a910b3-c2c1-41b1-8d23-74874c7dbaf3

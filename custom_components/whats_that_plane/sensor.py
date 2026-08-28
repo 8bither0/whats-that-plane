@@ -272,6 +272,7 @@ class WhatsThatPlaneSensor(CoordinatorEntity, SensorEntity):
             "radius_km": config.get("radius_km"),
             "facing_direction": config.get("facing_direction"),
             "fov_cone": config.get("fov_cone"),
+            "carto_api_key": config.get("carto_api_key", ""),
             "distance_units": config.get("distance_units", "metric"),
             "altitude_units": config.get("altitude_units", "imperial"),
             "speed_units": config.get("speed_units", "imperial"),
